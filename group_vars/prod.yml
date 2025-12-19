@@ -1,0 +1,12 @@
+# Nginx web server
+nginx_port: 80
+
+# MySQL database
+mysql_root_password: prodroot
+mysql_database: myapp_prod
+mysql_user: produser
+mysql_password: prodpassword
+mysql_port: 3306
+
+# Redis cache
+redis_port: 6379

@@ -1,0 +1,17 @@
+- name: Pull Nginx image
+  docker_image:
+    name: nginx
+    source: pull
+
+- name: Debug nginx_port variable
+  debug:
+    var: nginx_port
+
+- name: Run Nginx container
+  docker_container:
+    name: nginx_web
+    image: nginx
+    state: started
+    restart_policy: always
+    ports:
+      - "{{ nginx_port }}:80"

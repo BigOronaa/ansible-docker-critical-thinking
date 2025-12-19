@@ -1,0 +1,14 @@
+---
+- name: Pull Redis image
+  community.docker.docker_image:
+    name: "{{ redis_image }}"
+    source: pull
+
+- name: Run Redis container
+  community.docker.docker_container:
+    name: "{{ redis_container_name }}"
+    image: "{{ redis_image }}"
+    state: started
+    restart_policy: always
+    ports:
+      - "{{ redis_port }}:6379"

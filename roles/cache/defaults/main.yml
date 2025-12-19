@@ -1,0 +1,5 @@
+---
+# Redis defaults
+redis_image: redis
+redis_container_name: redis_cache
+redis_port: 6379

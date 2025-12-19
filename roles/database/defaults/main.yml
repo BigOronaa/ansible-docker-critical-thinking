@@ -1,12 +1,8 @@
-# Nginx web server
-nginx_port: 80
+---
+# defaults file for roles/database
 
-# MySQL database
 mysql_root_password: rootpassword
 mysql_database: myapp
 mysql_user: user
 mysql_password: userpassword
 mysql_port: 3306
-
-# Redis cache
-redis_port: 6379

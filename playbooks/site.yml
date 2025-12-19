@@ -1,6 +1,10 @@
 ---
-- name: Install and configure Docker
-  hosts: dev
+- name: Install and configure Docker + deploy containers
+  hosts: all
   become: true
+
   roles:
     - docker
+    - webserver
+    - database
+    - cache
