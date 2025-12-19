@@ -4,39 +4,43 @@ on:
   push:
     branches:
       - master
-      - staging
-      - production
 
 jobs:
-  deploy:
+  ansible-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      # Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v3
 
+      # Set up Python 3.11 for Ansible compatibility
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.12'
+          python-version: '3.11'
 
+      # Upgrade pip and install Ansible 2.19.5
       - name: Install Ansible
         run: |
           python -m pip install --upgrade pip
           pip install ansible==2.19.5
           pip install "ansible[community.docker]"
 
-      - name: Add SSH Key
-        uses: webfactory/ssh-agent@v0.9.1
+      # Add SSH key for connecting to EC2 instances
+      - name: Add SSH key
+        uses: webfactory/ssh-agent@v0.8.0
         with:
-          ssh-private-key: ${{ secrets.ANSIBLE_SSH_KEY }}
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      - name: Run Ansible Playbook
-        run: |
-          if [ "${GITHUB_REF##*/}" = "main" ]; then
-            ansible-playbook -i inventories/production.ini playbooks/site.yml
-          elif [ "${GITHUB_REF##*/}" = "staging" ]; then
-            ansible-playbook -i inventories/staging.ini playbooks/site.yml
-          else
-            ansible-playbook -i inventories/dev.ini playbooks/site.yml
-          fi
+      # Run playbook for Development
+      - name: Run Ansible Playbook - Development
+        run: ansible-playbook -i inventories/dev.ini playbooks/site.yml
+
+      # Run playbook for Staging
+      - name: Run Ansible Playbook - Staging
+        run: ansible-playbook -i inventories/staging.ini playbooks/site.yml
+
+      # Run playbook for Production
+      - name: Run Ansible Playbook - Production
+        run: ansible-playbook -i inventories/production.ini playbooks/site.yml
