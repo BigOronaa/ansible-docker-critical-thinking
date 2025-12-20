@@ -3,36 +3,44 @@
   hosts: all
   become: true
 
+  vars:
+    monitored_containers:
+      - nginx_container
+      - mysql_container
+      - redis_container
+
   tasks:
-    - name: Get running containers
+    - name: Get container info
       community.docker.docker_container_info:
         name: "{{ item }}"
-      loop:
-        - nginx
-        - mysql
-        - redis
+      loop: "{{ monitored_containers }}"
       register: container_status
       ignore_errors: true
 
     - name: Show container status
       debug:
         msg: >
-          Container {{ item.item }} running:
-          {{ item.container.State.Status | default('NOT FOUND') }}
+          Container {{ item.item }} status:
+          {{ item.container.State.Status if item.exists else 'NOT FOUND' }}
       loop: "{{ container_status.results }}"
 
-    - name: Fail if any container is not running
+    - name: Fail if container does not exist
+      fail:
+        msg: "Container {{ item.item }} does not exist"
+      when: not item.exists
+      loop: "{{ container_status.results }}"
+
+    - name: Fail if container is not running
       fail:
         msg: "Container {{ item.item }} is not running"
-      when: item.container.State.Status != "running"
+      when:
+        - item.exists
+        - item.container.State.Status != "running"
       loop: "{{ container_status.results }}"
 
     - name: Fetch container logs
       command: docker logs --tail 50 {{ item }}
-      loop:
-        - nginx
-        - mysql
-        - redis
+      loop: "{{ monitored_containers }}"
       register: container_logs
       ignore_errors: true
 
