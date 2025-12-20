@@ -3,47 +3,48 @@
   hosts: all
   become: true
 
-  vars:
-    monitored_containers:
-      - nginx_container
-      - mysql_container
-      - redis_container
-
   tasks:
-    - name: Get container info
+    # 1️⃣ Discover all Docker containers on the host
+    - name: Discover all Docker containers
       community.docker.docker_container_info:
-        name: "{{ item }}"
-      loop: "{{ monitored_containers }}"
-      register: container_status
-      ignore_errors: true
+      register: all_containers
 
+    # 2️⃣ Show discovered containers (for visibility in CI logs)
+    - name: Show discovered containers
+      debug:
+        var: all_containers.containers
+
+    # 3️⃣ Fail if no containers are found at all
+    - name: Fail if no Docker containers are found
+      fail:
+        msg: "No Docker containers found on host"
+      when: all_containers.containers | length == 0
+
+    # 4️⃣ Check status of each discovered container
     - name: Show container status
       debug:
         msg: >
-          Container {{ item.item }} status:
-          {{ item.container.State.Status if item.exists else 'NOT FOUND' }}
-      loop: "{{ container_status.results }}"
+          Container {{ item.Name | regex_replace('^/', '') }}
+          status: {{ item.State.Status }}
+      loop: "{{ all_containers.containers }}"
 
-    - name: Fail if container does not exist
-      fail:
-        msg: "Container {{ item.item }} does not exist"
-      when: not item.exists
-      loop: "{{ container_status.results }}"
-
+    # 5️⃣ Fail if any container is not running
     - name: Fail if container is not running
       fail:
-        msg: "Container {{ item.item }} is not running"
-      when:
-        - item.exists
-        - item.container.State.Status != "running"
-      loop: "{{ container_status.results }}"
+        msg: >
+          Container {{ item.Name | regex_replace('^/', '') }}
+          is not running (state: {{ item.State.Status }})
+      when: item.State.Status != "running"
+      loop: "{{ all_containers.containers }}"
 
+    # 6️⃣ Fetch logs from each container
     - name: Fetch container logs
-      command: docker logs --tail 50 {{ item }}
-      loop: "{{ monitored_containers }}"
+      command: docker logs --tail 50 {{ item.Name | regex_replace('^/', '') }}
+      loop: "{{ all_containers.containers }}"
       register: container_logs
       ignore_errors: true
 
+    # 7️⃣ Print container logs
     - name: Print container logs
       debug:
         var: container_logs.results
