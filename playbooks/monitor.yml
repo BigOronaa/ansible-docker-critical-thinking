@@ -1,65 +1,41 @@
 ---
-- name: Monitor Docker containers
+- name: Monitor Docker containers and collect logs
   hosts: all
   become: true
-  vars:
-    nginx_container_name: webserver
-    db_container_name: mysql
-    redis_container_name: redis
+
   tasks:
-    - name: Check if Nginx container is running
+    - name: Get running containers
       community.docker.docker_container_info:
-        name: "{{ nginx_container_name }}"
-      register: nginx_info
+        name: "{{ item }}"
+      loop:
+        - nginx
+        - mysql
+        - redis
+      register: container_status
+      ignore_errors: true
 
-    - name: Print Nginx container status
+    - name: Show container status
       debug:
-        msg: "Nginx container is {{ nginx_info.container.State.Status }}"
+        msg: >
+          Container {{ item.item }} running:
+          {{ item.container.State.Status | default('NOT FOUND') }}
+      loop: "{{ container_status.results }}"
 
-    - name: Check if MySQL container is running
-      community.docker.docker_container_info:
-        name: "{{ db_container_name }}"
-      register: db_info
+    - name: Fail if any container is not running
+      fail:
+        msg: "Container {{ item.item }} is not running"
+      when: item.container.State.Status != "running"
+      loop: "{{ container_status.results }}"
 
-    - name: Print MySQL container status
+    - name: Fetch container logs
+      command: docker logs --tail 50 {{ item }}
+      loop:
+        - nginx
+        - mysql
+        - redis
+      register: container_logs
+      ignore_errors: true
+
+    - name: Print container logs
       debug:
-        msg: "MySQL container is {{ db_info.container.State.Status }}"
-
-    - name: Check if Redis container is running
-      community.docker.docker_container_info:
-        name: "{{ redis_container_name }}"
-      register: redis_info
-
-    - name: Print Redis container status
-      debug:
-        msg: "Redis container is {{ redis_info.container.State.Status }}"
-
-    - name: Get last 50 lines of Nginx logs
-      community.docker.docker_container_logs:
-        name: "{{ nginx_container_name }}"
-        tail: 50
-      register: nginx_logs
-
-    - name: Print Nginx logs
-      debug:
-        var: nginx_logs.logs
-
-    - name: Get last 50 lines of MySQL logs
-      community.docker.docker_container_logs:
-        name: "{{ db_container_name }}"
-        tail: 50
-      register: db_logs
-
-    - name: Print MySQL logs
-      debug:
-        var: db_logs.logs
-
-    - name: Get last 50 lines of Redis logs
-      community.docker.docker_container_logs:
-        name: "{{ redis_container_name }}"
-        tail: 50
-      register: redis_logs
-
-    - name: Print Redis logs
-      debug:
-        var: redis_logs.logs
+        var: container_logs.results
