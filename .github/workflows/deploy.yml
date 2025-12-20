@@ -60,3 +60,18 @@ jobs:
           fi
         env:
           ANSIBLE_HOST_KEY_CHECKING: "False"
+
+      # 🔔 Notify on success
+      - name: Notify Success
+        if: success()
+        run: |
+          echo "Deployment and monitoring succeeded for ${GITHUB_REF##*/} environment"
+
+      # 🚨 Notify on failure
+      - name: Notify Failure
+        if: failure()
+        run: |
+          echo "Deployment or monitoring FAILED for ${GITHUB_REF##*/} environment"
+
+
+          
