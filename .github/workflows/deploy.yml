@@ -18,41 +18,29 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
-      # 3. Install Ansible Core + Docker collection
+      # 3. Upgrade pip, install Ansible core + Docker collection
       - name: Install Ansible and Docker collection
         run: |
           python -m pip install --upgrade pip
-          pip install ansible-core
+          pip install "ansible-core==2.19.5"
           ansible-galaxy collection install community.docker
 
-      # 4. Configure SSH (disable multiplexing issues)
-      - name: Configure Ansible SSH settings
-        run: |
-          cat <<EOF > ansible.cfg
-          [defaults]
-          host_key_checking = False
-          retry_files_enabled = False
-
-          [ssh_connection]
-          ssh_args = -o StrictHostKeyChecking=no -o ControlMaster=no
-          EOF
-
-      # 5. Add SSH private key
+      # 4. Add SSH key for connecting to EC2 instances
       - name: Add SSH key
         uses: webfactory/ssh-agent@v0.8.0
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      # 6. Run playbook for Development
+      # 5. Run playbook for Development
       - name: Run Ansible Playbook - Development
-        run: ansible-playbook -i inventories/dev.ini playbooks/site.yml --forks 1
+        run: ansible-playbook -i inventories/dev.ini playbooks/site.yml
 
-      # 7. Run playbook for Staging
+      # 6. Run playbook for Staging
       - name: Run Ansible Playbook - Staging
-        run: ansible-playbook -i inventories/staging.ini playbooks/site.yml --forks 1
+        run: ansible-playbook -i inventories/staging.ini playbooks/site.yml
 
-      # 8. Run playbook for Production
+      # 7. Run playbook for Production
       - name: Run Ansible Playbook - Production
-        run: ansible-playbook -i inventories/production.ini playbooks/site.yml --forks 1
+        run: ansible-playbook -i inventories/production.ini playbooks/site.yml
