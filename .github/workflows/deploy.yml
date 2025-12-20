@@ -42,15 +42,18 @@ jobs:
           echo "[defaults]" > ~/.ansible/ansible.cfg
           echo "host_key_checking = False" >> ~/.ansible/ansible.cfg
 
-      # 6️⃣ Run environment-specific playbook
+      # 6️⃣ Run environment-specific deployment playbook
       - name: Run Ansible Playbook
         run: |
           if [[ "${GITHUB_REF##*/}" == "dev" ]]; then
             ansible-playbook -i inventories/dev.ini playbooks/site.yml
+            ansible-playbook -i inventories/dev.ini playbooks/monitor.yml
           elif [[ "${GITHUB_REF##*/}" == "staging" ]]; then
             ansible-playbook -i inventories/staging.ini playbooks/site.yml
+            ansible-playbook -i inventories/staging.ini playbooks/monitor.yml
           elif [[ "${GITHUB_REF##*/}" == "master" ]]; then
             ansible-playbook -i inventories/production.ini playbooks/site.yml
+            ansible-playbook -i inventories/production.ini playbooks/monitor.yml
           else
             echo "Branch not configured for deployment."
             exit 1
