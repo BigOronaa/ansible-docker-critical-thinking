@@ -3,6 +3,8 @@ name: Deploy Docker Containers
 on:
   push:
     branches:
+      - dev
+      - staging
       - master
 
 jobs:
@@ -40,20 +42,18 @@ jobs:
           echo "[defaults]" > ~/.ansible/ansible.cfg
           echo "host_key_checking = False" >> ~/.ansible/ansible.cfg
 
-      # 6️⃣ Run playbook for Development
-      - name: Run Ansible Playbook - Development
-        run: ansible-playbook -i inventories/dev.ini playbooks/site.yml
-        env:
-          ANSIBLE_HOST_KEY_CHECKING: "False"
-
-      # 7️⃣ Run playbook for Staging
-      - name: Run Ansible Playbook - Staging
-        run: ansible-playbook -i inventories/staging.ini playbooks/site.yml
-        env:
-          ANSIBLE_HOST_KEY_CHECKING: "False"
-
-      # 8️⃣ Run playbook for Production
-      - name: Run Ansible Playbook - Production
-        run: ansible-playbook -i inventories/production.ini playbooks/site.yml
+      # 6️⃣ Run environment-specific playbook
+      - name: Run Ansible Playbook
+        run: |
+          if [[ "${GITHUB_REF##*/}" == "dev" ]]; then
+            ansible-playbook -i inventories/dev.ini playbooks/site.yml
+          elif [[ "${GITHUB_REF##*/}" == "staging" ]]; then
+            ansible-playbook -i inventories/staging.ini playbooks/site.yml
+          elif [[ "${GITHUB_REF##*/}" == "master" ]]; then
+            ansible-playbook -i inventories/production.ini playbooks/site.yml
+          else
+            echo "Branch not configured for deployment."
+            exit 1
+          fi
         env:
           ANSIBLE_HOST_KEY_CHECKING: "False"
