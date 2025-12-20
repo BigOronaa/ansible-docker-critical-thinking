@@ -4,43 +4,44 @@
   become: true
 
   tasks:
-    # 1️⃣ Discover all Docker containers on the host
-    - name: Discover all Docker containers
-      community.docker.docker_container_info:
-      register: all_containers
+    # 1️⃣ Get all container names from Docker
+    - name: Get list of Docker containers
+      command: docker ps -a --format "{{ '{{' }}.Names{{ '}}' }}"
+      register: docker_containers
+      changed_when: false
 
-    # 2️⃣ Show discovered containers (for visibility in CI logs)
-    - name: Show discovered containers
-      debug:
-        var: all_containers.containers
-
-    # 3️⃣ Fail if no containers are found at all
+    # 2️⃣ Fail if no containers exist
     - name: Fail if no Docker containers are found
       fail:
-        msg: "No Docker containers found on host"
-      when: all_containers.containers | length == 0
+        msg: "No Docker containers found on this host"
+      when: docker_containers.stdout_lines | length == 0
 
-    # 4️⃣ Check status of each discovered container
+    # 3️⃣ Inspect each container
+    - name: Inspect Docker containers
+      community.docker.docker_container_info:
+        name: "{{ item }}"
+      loop: "{{ docker_containers.stdout_lines }}"
+      register: container_status
+
+    # 4️⃣ Show container status
     - name: Show container status
       debug:
         msg: >
-          Container {{ item.Name | regex_replace('^/', '') }}
-          status: {{ item.State.Status }}
-      loop: "{{ all_containers.containers }}"
+          Container {{ item.item }} status:
+          {{ item.container.State.Status }}
+      loop: "{{ container_status.results }}"
 
     # 5️⃣ Fail if any container is not running
     - name: Fail if container is not running
       fail:
-        msg: >
-          Container {{ item.Name | regex_replace('^/', '') }}
-          is not running (state: {{ item.State.Status }})
-      when: item.State.Status != "running"
-      loop: "{{ all_containers.containers }}"
+        msg: "Container {{ item.item }} is not running"
+      when: item.container.State.Status != "running"
+      loop: "{{ container_status.results }}"
 
-    # 6️⃣ Fetch logs from each container
+    # 6️⃣ Fetch container logs
     - name: Fetch container logs
-      command: docker logs --tail 50 {{ item.Name | regex_replace('^/', '') }}
-      loop: "{{ all_containers.containers }}"
+      command: docker logs --tail 50 {{ item }}
+      loop: "{{ docker_containers.stdout_lines }}"
       register: container_logs
       ignore_errors: true
 
